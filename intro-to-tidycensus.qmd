@@ -305,7 +305,8 @@ sb_race <- get_acs(
   variables = race_var,
   state = "CA",
   county = "Santa Barbara",
-  geometry = TRUE)
+  geometry = TRUE) %>% 
+    filter(GEOID != "06083980100") ## filtering out channel island polygons (census tract 9801 in 2020 census)
 
 head(sb_race)
 ```
@@ -313,7 +314,7 @@ head(sb_race)
 2. Filter for Hispanic population
 ```{r}
 sb_hispanic <- filter(sb_race,
-                           variable == "Hispanic")
+                      variable == "Hispanic")
 ```
 
 
