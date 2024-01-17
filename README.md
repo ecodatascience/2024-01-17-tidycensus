@@ -25,7 +25,7 @@ library(tidycensus)
 - Check your email for your key.
 
 
-### 3. Set Census API key in your local working environment
+### 3. Set the Census API key in your local working environment
 
 ```
 census_api_key("YOUR KEY GOES HERE", install = TRUE)
@@ -36,7 +36,15 @@ census_api_key("YOUR KEY GOES HERE", install = TRUE)
 
 ### 4. Restart R
 
+### 5. Make sure you have the following packages installed
+- `tidycensus`
+- `dplyr`
+- `tidyr`
+- `ggplot2`
+- `mapview`
+- `sf`
+
 
 ## Workshop Material
-- Slides
-- Script
+- Slides [LINK WILL BE AVAILABLE SOON]
+- [Script](https://github.com/ecodatascience/2024-01-17-tidycensus/blob/main/intro-to-tidycensus.qmd)
