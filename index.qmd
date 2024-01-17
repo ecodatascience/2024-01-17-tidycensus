@@ -1,0 +1,382 @@
+---
+title: "Intro to `tidycensus`"
+subtitle: "A workshop for EcoDataScience, UCSB"
+author: "Camila Vargas Poulsen"
+date: "2024-01-17"
+format: html
+execute: 
+  eval: false
+---
+
+
+:::callout-note
+This lesson is based on [Analyzing US Census Data: Methods, Maps, and Models in R](https://walker-data.com/census-r/), by Kyle Walker. And Walker’s workshop “Analyzing 2020 Census Data with R and tidycensus” for University of Michigan (2022). GitHub repository [here](https://github.com/walkerke/umich-workshop-2022).
+:::
+
+## Introduction
+When working with census data, the general workflow would be to go to [data.census.gov](https://data.census.gov/), filter data and queries based on variables and geographies, and then download the data into a spreadsheet. People that work with census data do this over and over again.
+
+The `tidycensus` package (Walker and Matt (2021)) was developed to systematize this process and do this systematization using R. In 2012 the US Census Bureau released the Census Application Programming Interface (API) as a way to disseminate government data resources to the public. This interface now provides programmatic access to hundreds of data resources from the Census Bureau. The vision behind this package was to incorporate the API access into an R package to facilitate access to census data using R.
+
+## Set up
+
+```{r}
+
+library(tidycensus)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(mapview)
+library(sf)
+
+```
+
+If you haven't  set your key into your R Environment run the following function and then restart R.
+```{r}
+census_api_key("YOUR KEY GOES HERE", install = TRUE)
+```
+
+
+## Quering data (focus on 2020 decennial data)
+
+-  Total population for 2020 by state
+
+```{r}
+pop_2020 <- get_decennial(
+    geography = "state",
+    variable = "P1_001N",
+    year = 2020)
+```
+
+
+- Total population data for the **2010** decennial census by state
+
+```{r}
+pop_2010 <- get_decennial(
+  geography = "state", 
+  variables = "P001001",
+  year = 2010)
+```
+
+**Note:** To get total population data for the 2010 decennial census the variable code is different than the 2020 census (even though the arguments of the functions are the same).
+
+
+- Retrieving table P2 from 2020. 
+
+Table P2 is one of the tables of the 2020 census, which provides counts by Race with Hispanic origins.
+
+```{r}
+table_p2_2020 <- get_decennial(
+    geography = "state",
+    table = "P2",
+    year = 2020)
+```
+
+Let’s check which variables we have in the P2 table.
+
+```{r}
+unique(table_p2_2020$variable)
+```
+
+
+## Census files, tables, and variables
+
+Let’s take a look on how this works. Data is released in files. Each file is a data product from the Census Bureau (find details of the Census data products here), for example, PL 94-171 is one of the files for the 2020 Decennial Census. Each of these files contains many tables (P1, P2 .. P5). Each table covers a specific topic. For example, P2 provides counts by race by Hispanic origins. Then each table has multiple variables. The variable code seems to, for the most part, start with the table code. For example, the unique codes values we printed from table P2 all start with P2_.
+
+
+How do we navigate all these codes? There is no straightforward way. In part, this dilemma is part of working with census data, which in itself is complicated. However, `tidycensus` provides some help with a function called `load_variables()`.
+
+
+This function scrapes the variables’ names from the census website and gives you a data frame that you can interact with. This variable requires you to input a year and a file name.
+
+- Variable codes and definitions for the **PL 94-171** redistricting file
+
+```{r}
+vars_pl_2020 <-  load_variables(2020, "pl")
+
+## for 20210
+vars_pl_2010 <-  load_variables(2010, "pl")
+```
+
+Another important file in the Decennial Census is the _Demographic and Housing Characteristics File (DHC)_. Similar to the code above, we can get all the variables and tables from this file by running:
+
+```{r}
+vars_dhc_2020 <-  load_variables(2020, "dhc")
+```
+
+To access a variable from a specific file you can use the  argument `sumfile =` and specify the file.
+
+```{r}
+## Note you have to specify the file with sumfile =
+household_2020 <- get_decennial(
+    geography = "state",
+    variable = "H10_001N",
+    year = 2020,
+    sumfile = "dhc")
+```
+
+The idea behind `load_variables()` is for you to be able to search for the variable code for the variable you need.
+
+
+## Census Geographies
+
+The parameter `geography =` in `get_acs()` and `get_decennial()` allows us to request data from common enumeration units. This mean we can name the specific geography we want data from. For example, let’s get data for Hispanic population for the tri-counties: San Luis Obispo, Santa Barbara and Ventura.
+
+```{r}
+tricounty_hispanic <- get_decennial(
+  geography = "county",
+  state = "CA",
+  county = c("San Luis Obispo", "Santa Barbara", "Ventura"),
+  variables = "P2_002N",
+  year = 2020)
+```
+
+We can also get the same information aggregated by Census Tracts by specifying the `geography = "tract"`.
+
+```{r}
+tricounty_hispanic_tract <- get_decennial(
+  geography = "tract",
+  state = "CA",
+  county = c("San Luis Obispo", "Santa Barbara", "Ventura"),
+  variables = "P2_002N",
+  year = 2020)
+```
+
+
+## Quering for multiple variables
+The `varaible` argument can take a vector of variables as an input, allowing to query for more than one variable at the time. We can create a vector and then call that vector as the input of the `variable` argument, or we can use the concatenate function `c()` and request data from multiple variables.
+
+```{r}
+## Vector with race variables codes
+race_vars <- c(
+  Hispanic = "P2_002N",
+  White = "P2_005N",
+  Black = "P2_006N",
+  Native = "P2_007N",
+  Asian = "P2_008N",
+  HIPI = "P2_009N") ## Native Hawaiian and other Pacific Islander
+
+tricounty_race <- get_decennial(
+  geography = "county",
+  state = "CA",
+  county = c("San Luis Obispo", "Santa Barbara", "Ventura"),
+  variables = race_vars,
+  summary_var = "P2_001N",
+  year = 2020)
+```
+
+Note how this data frame returns the variable name we assigned in the vector above instead of the variable code! This is a handy option, given that the codes can be hard to remember what is what.
+
+Also, note that we added one more argument to our request `summary_var = "P2_001N`. This adds a column to our output data frame, with a summary variable value.
+
+In every table you can generally find a variable that is an appropriate denominators for a group of variables. Following the example above, the P2 table, which provides population by race with Hispanic origin, the variable “P2001N” represents the total population. Because this variable is an an appropriate denominator for the other variables in the table, it helps to have it in a different column to make it easier to calculate proportions or percentage.
+
+## Getting Census Data ready for analysis
+
+Once we access the data we want, we can apply our data wrangling skills to get the data in the format that we want.
+
+Let’s demonstrate this with an example. Let’s compare the distribution of percentage White population and percentage Hispanic population by census track vary among the  Tri-Counties.
+
+The first step is to get the data.
+
+### Exercise
+
+Make a query to get White and Hispanic population data for Tri-counties by tracks from the 2020 Decennial Census. Include the total population summary variable (summary_var = "P2_001N").
+
+
+Hint: variable codes are:
+
+-   Total Hispanic population = P2_002N
+-   Total White population = P2_005N
+
+
+```{r}
+tricounty_track_hw <- get_decennial(
+  geography = "tract",
+  variables = c(hispanic = "P2_002N",
+                white = "P2_005N"),
+  summary_var = "P2_001N",
+  state = "CA",
+  county = c("San Luis Obispo", "Santa Barbara", "Ventura"),
+  year = 2020)
+```
+
+We can check our data by calling the `View(tricounty_track_hw)` function in the console.
+
+### Calculating the percentage of White and Hispanic population in each track
+And clean the NAMES column and separate track, county and state into it’s own column using `tidyr::separate()`.
+
+```{r}
+tricounty_track_clean <- tricounty_track_hw %>% 
+    mutate(percent = 100 * (value / summary_value)) %>% 
+    separate(NAME, into = c("tract", "county", "state"),
+           sep = ", ")
+```
+
+### Plotting the data
+
+Let's create a plot to compare the distribution of percentage White population and percentage Hispanic population by census track vary among the  Tri-Counties.
+
+```{r}
+ggplot(tricounty_track_clean, 
+       aes(x = percent, fill = county)) + 
+  geom_density(alpha = 0.5)+
+    facet_wrap(~variable)+
+    theme_light()
+```
+
+
+## `get_acs()`
+
+-   The functions operates very similar to get_decennial().
+-   The main differences is that is access a different survey so the options for each argument change.
+-   The two required arguments are geography and variables. The function defaults to the 2017-2021 5-year ACS.
+-   1-year ACS data are more current, but are only available for geographies of population 65,000 and greater.
+-   Access 1-year ACS data with the argument survey = "acs1"; defaults to “acs5”.
+-   Example code to get median income for California by county.
+
+```{r}
+## 1-year survey
+median_income_1yr <- get_acs(
+  geography = "county",
+  variables = "B19013_001",
+  state = "CA",
+  year = 2021,
+  survey = "acs1")
+
+## 5-year survey. Defaults to the 2017-2021 5-year ACS
+median_income_5yr <- get_acs(
+  geography = "county",
+  variables = "B19013_001",
+  state = "CA")
+```
+
+-   You can access to different variables in a survey with the load_variables() function.
+
+```{r}
+## variables for 5-year 2017-2021 ACS
+vars <- load_variables(2021, "acs5")
+```
+
+
+## Spatial Census Data in `tidycensus`
+
+To work with “spatial” Census data you would generally have to go and find shapefiles on the Census website, download a CSV with the data, clean and format the data, load the geometries and data to your spatial data software of choice, then align the key fields and join your data with the geometries.
+
+Again, `tidycensus` to the rescue! This packages combines all these steps and makes it very easy to get census data nd its geometries ready for analysis. Let’s see how this work.
+
+So now, if we want to retrieve data for income estimates by county for California with it’s associated geometries we need to know the variable for income estimates (“B19013_001”), call `get_acs()` with all the necessary information and add the argument `geometry = TRUE` to get the spatial data for each geography.
+
+
+```{r}
+## defaults to most recent 5year estimates (2017-2021 5-year ACS)
+ca_income <- get_acs(
+    geography = "county",
+    variables = "B19013_001",
+    state = "CA",
+    year = 2021,
+    geometry = TRUE) ## This argument does all of the steps mentioned above.
+```
+
+
+Now we have the corresponding spatial data bind to our variable of interest. We can plot this data using the base r `plot()` function.
+
+
+```{r}
+plot(ca_income["estimate"])
+```
+
+## Interactive maps 
+
+```{r}
+mapview(ca_income, zcol = "estimate")
+```
+
+
+## Mapping ACS data with `ggplot2`
+
+1. Get _race_ data fro Santa Barbara County
+```{r}
+race_var <- c(
+    Hispanic = "DP05_0071P",
+    White = "DP05_0077P",
+    Black = "DP05_0078P",
+    Asian = "DP05_0080P")
+
+## Default long
+sb_race <- get_acs(
+  geography = "tract",
+  variables = race_var,
+  state = "CA",
+  county = "Santa Barbara",
+  geometry = TRUE) %>% 
+    filter(GEOID != "06083980100") ## filtering out channel island polygons (census tract 9801 in 2020 census)
+
+head(sb_race)
+```
+
+2. Filter for Hispanic population
+```{r}
+sb_hispanic <- filter(sb_race,
+                      variable == "Hispanic")
+```
+
+
+3. Plot!
+```{r}
+ggplot(sb_hispanic,
+       aes(fill = estimate))+
+    geom_sf() ## plots polygons!
+```
+
+Now we can make out plot look nicer..
+
+```{r}
+ggplot(sb_hispanic, aes(fill = estimate)) + 
+  geom_sf() + 
+  theme_void() + 
+  scale_fill_viridis_c(option = "rocket") + 
+  labs(title = "Percent Hispanic by Census tract",
+       subtitle = "Santa Barbara County, California",
+       fill = "ACS estimate",
+       caption = "2017-2021 ACS | tidycensus R package")
+```
+
+
+You can also plot you data in bins instead of a continuous scale.
+
+```{r}
+ggplot(sb_hispanic, aes(fill = estimate)) + 
+  geom_sf() + 
+  theme_void() + 
+  scale_fill_viridis_b(option = "rocket", n.breaks = 6) + 
+  labs(title = "Percent Hispanic by Census tract",
+       subtitle = "Santa Barbara County, California",
+       fill = "ACS estimate",
+       caption = "2017-2021 ACS | tidycensus R package")
+```
+
+
+Which style to use will depends on what you want to achieve. We can see that in the plot with bins we loose some resolution. On the other hand the continuous scale can provide a little of a color over load.
+
+We can keep leveraging on ggplot2 power and plot more variables of our data. For example create a map for each of the difference races on our data.
+
+```{r}
+ggplot(sb_race, aes(fill = estimate)) + 
+  geom_sf(color = NA) +  ## removes delimitation of each tract
+  theme_void() + 
+  scale_fill_viridis_c(option = "rocket") + 
+  facet_wrap(~variable) +
+  labs(title = "Race / ethnicity by Census tract",
+       subtitle = "Santa Barbara County, California",
+       fill = "ACS estimate (%)",
+       caption = "2017-2021 ACS | tidycensus R package")
+```
+
+## More on maps
+Check out the following resources to learn more about mapping census data and spatial analysis.
+
+- The `tmap` package ([Tennekes 2018](https://www.jstatsoft.org/article/view/v084i06)) is an alternative to `ggplot2` for creating custom maps. T stands for “Thematic”, refering to the phenomena that is shown or plotted, for example demographical, social, cultural, or economic phenomena. This package includes a wide range of functionality for custom cartography. Example of `tmap` and `tidycensus` in [Walker 2023, Chapter 6](https://walker-data.com/census-r/mapping-census-data-with-r.html#map-making-with-tmap).
+- [Reactive mapping with `Shiny`](https://walker-data.com/census-r/mapping-census-data-with-r.html#reactive-mapping-with-shiny)
+-   Spatial Analysis with Census Data, [Walker 2023, Chapter 7](https://walker-data.com/census-r/spatial-analysis-with-us-census-data.html)
+-   Modeling Census Data, [Walker 2023 Chapter 8](https://walker-data.com/census-r/modeling-us-census-data.html#modeling-us-census-data). Indices for segregation and diversity are addresed in this chapter.
