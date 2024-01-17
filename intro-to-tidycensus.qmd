@@ -94,6 +94,8 @@ vars_pl_2020 <-  load_variables(2020, "pl")
 vars_pl_2010 <-  load_variables(2010, "pl")
 ```
 
+### Demographic and Housing Characteristics File (DHC)
+
 Another important file in the Decennial Census is the _Demographic and Housing Characteristics File (DHC)_. Similar to the code above, we can get all the variables and tables from this file by running:
 
 ```{r}
@@ -177,7 +179,7 @@ The first step is to get the data.
 
 ### Exercise
 
-Make a query to get White and Hispanic population data for Tri-counties by tracks from the 2020 Decennial Census. Include the total population summary variable (summary_var = "P2_001N").
+Make a query to get White and Hispanic population data for Tri-counties by tract from the 2020 Decennial Census. Include the total population summary variable (summary_var = "P2_001N").
 
 
 Hint: variable codes are:
@@ -187,14 +189,9 @@ Hint: variable codes are:
 
 
 ```{r}
-tricounty_track_hw <- get_decennial(
-  geography = "tract",
-  variables = c(hispanic = "P2_002N",
-                white = "P2_005N"),
-  summary_var = "P2_001N",
-  state = "CA",
-  county = c("San Luis Obispo", "Santa Barbara", "Ventura"),
-  year = 2020)
+tricounty_tract_hw <- get_decennial(
+  
+    )
 ```
 
 We can check our data by calling the `View(tricounty_track_hw)` function in the console.
@@ -203,18 +200,15 @@ We can check our data by calling the `View(tricounty_track_hw)` function in the 
 And clean the NAMES column and separate track, county and state into it’s own column using `tidyr::separate()`.
 
 ```{r}
-tricounty_track_clean <- tricounty_track_hw %>% 
-    mutate(percent = 100 * (value / summary_value)) %>% 
-    separate(NAME, into = c("tract", "county", "state"),
-           sep = ", ")
+tricounty_tract_clean <- 
 ```
 
 ### Plotting the data
 
-Let's create a plot to compare the distribution of percentage White population and percentage Hispanic population by census track vary among the  Tri-Counties.
+Let's create a plot to compare the distribution of percentage White population and percentage Hispanic population by census track vary among the Tri-Counties.
 
 ```{r}
-ggplot(tricounty_track_clean, 
+ggplot(tricounty_tract_clean, 
        aes(x = percent, fill = county)) + 
   geom_density(alpha = 0.5)+
     facet_wrap(~variable)+

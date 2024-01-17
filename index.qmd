@@ -8,15 +8,92 @@ execute:
   eval: false
 ---
 
-
-:::callout-note
+::: callout-note
 This lesson is based on [Analyzing US Census Data: Methods, Maps, and Models in R](https://walker-data.com/census-r/), by Kyle Walker. And Walker’s workshop “Analyzing 2020 Census Data with R and tidycensus” for University of Michigan (2022). GitHub repository [here](https://github.com/walkerke/umich-workshop-2022).
 :::
 
+## Learning Objectives
+
+-   Provide an overview of US Census data
+-   Introduce the main functions of the tidycensus package to be able to work with census data
+-   Review data wrangling function to get census data ready for analysis
+-   Plot census data using ggplot2
+-   Create maps with census data
+
 ## Introduction
+
 When working with census data, the general workflow would be to go to [data.census.gov](https://data.census.gov/), filter data and queries based on variables and geographies, and then download the data into a spreadsheet. People that work with census data do this over and over again.
 
-The `tidycensus` package (Walker and Matt (2021)) was developed to systematize this process and do this systematization using R. In 2012 the US Census Bureau released the Census Application Programming Interface (API) as a way to disseminate government data resources to the public. This interface now provides programmatic access to hundreds of data resources from the Census Bureau. The vision behind this package was to incorporate the API access into an R package to facilitate access to census data using R.
+The `tidycensus` package (Walker and Herman (2021)) was developed to systematize this process and do this systematization using R. In 2012 the US Census Bureau released the Census Application Programming Interface (API) as a way to disseminate government data resources to the public. This interface now provides programmatic access to hundreds of data resources from the Census Bureau. The vision behind this package was to incorporate the API access into an R package to facilitate access to census data using R.
+
+### General Structure
+
+`tidycensus` takes an opinionated approach to accessing a selected number of census APIs. The main goal is to facilitate access to a few census APIs through R.
+
+Data files you can access through this package are named and described in the table below.
+
+| Survey Name                     | Description                                                                                                                                                                                                                                                                                                               |
+|------------------------------------|------------------------------------|
+| Decennial census                | Complete enumeration of the US population to assist with apportionment. It asks a limited set of questions on race, ethnicity, age, sex, and housing tenure. Data from 2000, 2010, available data from 2020                                                                                                               |
+| American Community Survey (ACS) | Detailed demographic information about US population. Annual data updates. 1-year ACS greater, and the 5-year ACS, which is a moving average of data over a 5-year period that covers geographies down to the Census block group. ACS data represent estimates rather than precise counts. Data includes margin of error. |
+| Population estimate program     | These datasets include yearly estimates of population characteristics by state, county, and metropolitan area, along with components of change demographic estimates like births, deaths, and migration rates.                                                                                                            |
+| ACS Public Use Microdata        | Anonymized individual-level records from the ACS organized by households                                                                                                                                                                                                                                                  |
+| Migration Flows                 | Information about in and outflows from several geographies from the 5-year ACS samples.                                                                                                                                                                                                                                   |
+
+The idea behind this package is to make the tedious process of working with Census data more concise. It pulls data from the census API and returns it to the user in a "tidy" format.
+
+Can easily merge census geometries to data for mapping. Which apparently can be a very time-consuming task. Unfortunately, for this session, we will not get into mapping. Check out Analyzing Census Data [Chapter 6: Mapping Census Data with R](https://walker-data.com/census-r/mapping-census-data-with-r.html) for more details on this subject.
+
+Other features of this package:
+
+-   Includes tools for handling margins of errors in the ACS and working with survey weights in the ACS Public Use Microdata.
+-   You can request data from states and counties by name instead of FIPS codes.
+
+
+## Quering data (focus on 2020 decennial data)
+
+### The 2020 Decennial Data
+
+Before we dive into retrieving data from the 2020 decennial census, we need to mention a couple of things. Based on all the challenges of running a decennial census during a pandemic, the Census Bureau had to make decisions and provide new and different functionalists. The pandemic also delayed the release of the 2020 census data. You can check [here](https://www2.census.gov/programs-surveys/decennial/2020/program-management/2010_20_data_product_release_dates.pdf) what data products have been released until now, and the Bureau's timeline to release more data.
+
+One of the main files from the 2020 census is the PL94-171 Redistricting Summary File which is used for congressional appointments and redistricting. Variable available in this file are:
+
+-   Total counts (population & households)
+-   Occupied/vacant housing unit
+-   Total and voting age population breakdown by race & ethnicity
+-   Group quarter status
+
+Demographic and Housing Characteristics Summary Files (Different to summary file 1 form 2010). Contains age and sex breakdowns and detailed race and ethnicity data.
+
+### Getting census data
+
+The main functions from `tidycensus` represent the select number of datasets that this package provides access to. The following table provides the description for each of the core functions from [Walker's book](https://walker-data.com/census-r/an-introduction-to-tidycensus.html#decennial-census).
+
+| Function          | Description                                                                                                                                                                                                                                                |
+|-----------------------|------------------------------------------------|
+| `get_decennial()` | Retrieves data from the US Decennial Census APIs for 2000, 2010, and 2020.                                                                                                                                                                                 |
+| `get_acs()`       | Requests data from the 1-year and 5-year American Community Survey samples. Data are available from the 1-year ACS back to 2005 and the 5-year ACS back to 2005-2009.                                                                                      |
+| `get_estimates()` | Allows you to get the Population Estimates. These datasets include yearly estimates of population characteristics by state, county, and metropolitan area, along with components of change demographic estimates like births, deaths, and migration rates. |
+| `get_pums()`      | Accesses data from the ACS Public Use Microdata Sample APIs. These samples include anonymized individual-level records from the ACS organized by household and are highly useful for many different social science analyses                                |
+| `get_flows()`     | an interface to the ACS Migration Flows APIs. Includes information on in- and out-flows from various geographies for the 5-year ACS samples, enabling origin-destination analyses.                                                                         |
+
+Here we are going to focus on getting started with using `get_decennial()` as a way of understanding how this package works.
+
+With `get_decennial()`, you can query data from 2000, 2010 and 2020 decennial census. The 3 necessary arguments you need to provide are:
+
+-   Geography
+-   Variable
+-   Year
+
+::: callout-tip
+## Specifying a summary file
+
+Another argument form `get_decennial()` is `sumfile =`.
+
+"The Census summary file; if NULL, defaults to"pl" when the year is 2020 and "sf1" for 2000 and 2010. Not all summary files are available for each decennial Census year. Make sure you are using the correct summary file for your requested variables, as variable IDs may be repeated across summary files and represent different topics"
+:::
+
+
 
 ## Set up
 
@@ -31,15 +108,15 @@ library(sf)
 
 ```
 
-If you haven't  set your key into your R Environment run the following function and then restart R.
+If you haven't set your key into your R Environment run the following function and then restart R.
+
 ```{r}
 census_api_key("YOUR KEY GOES HERE", install = TRUE)
 ```
 
-
 ## Quering data (focus on 2020 decennial data)
 
--  Total population for 2020 by state
+-   Total population for 2020 by state
 
 ```{r}
 pop_2020 <- get_decennial(
@@ -48,8 +125,7 @@ pop_2020 <- get_decennial(
     year = 2020)
 ```
 
-
-- Total population data for the **2010** decennial census by state
+-   Total population data for the **2010** decennial census by state
 
 ```{r}
 pop_2010 <- get_decennial(
@@ -60,8 +136,7 @@ pop_2010 <- get_decennial(
 
 **Note:** To get total population data for the 2010 decennial census the variable code is different than the 2020 census (even though the arguments of the functions are the same).
 
-
-- Retrieving table P2 from 2020. 
+-   Retrieving table P2 from 2020.
 
 Table P2 is one of the tables of the 2020 census, which provides counts by Race with Hispanic origins.
 
@@ -78,18 +153,15 @@ Let’s check which variables we have in the P2 table.
 unique(table_p2_2020$variable)
 ```
 
-
 ## Census files, tables, and variables
 
-Let’s take a look on how this works. Data is released in files. Each file is a data product from the Census Bureau (find details of the Census data products here), for example, PL 94-171 is one of the files for the 2020 Decennial Census. Each of these files contains many tables (P1, P2 .. P5). Each table covers a specific topic. For example, P2 provides counts by race by Hispanic origins. Then each table has multiple variables. The variable code seems to, for the most part, start with the table code. For example, the unique codes values we printed from table P2 all start with P2_.
-
+Let’s take a look on how this works. Data is released in files. Each file is a data product from the Census Bureau (find details of the Census data products here), for example, PL 94-171 is one of the files for the 2020 Decennial Census. Each of these files contains many tables (P1, P2 .. P5). Each table covers a specific topic. For example, P2 provides counts by race by Hispanic origins. Then each table has multiple variables. The variable code seems to, for the most part, start with the table code. For example, the unique codes values we printed from table P2 all start with P2\_.
 
 How do we navigate all these codes? There is no straightforward way. In part, this dilemma is part of working with census data, which in itself is complicated. However, `tidycensus` provides some help with a function called `load_variables()`.
 
-
 This function scrapes the variables’ names from the census website and gives you a data frame that you can interact with. This variable requires you to input a year and a file name.
 
-- Variable codes and definitions for the **PL 94-171** redistricting file
+-   Variable codes and definitions for the **PL 94-171** redistricting file
 
 ```{r}
 vars_pl_2020 <-  load_variables(2020, "pl")
@@ -98,13 +170,13 @@ vars_pl_2020 <-  load_variables(2020, "pl")
 vars_pl_2010 <-  load_variables(2010, "pl")
 ```
 
-Another important file in the Decennial Census is the _Demographic and Housing Characteristics File (DHC)_. Similar to the code above, we can get all the variables and tables from this file by running:
+Another important file in the Decennial Census is the *Demographic and Housing Characteristics File (DHC)*. Similar to the code above, we can get all the variables and tables from this file by running:
 
 ```{r}
 vars_dhc_2020 <-  load_variables(2020, "dhc")
 ```
 
-To access a variable from a specific file you can use the  argument `sumfile =` and specify the file.
+To access a variable from a specific file you can use the argument `sumfile =` and specify the file.
 
 ```{r}
 ## Note you have to specify the file with sumfile =
@@ -116,7 +188,6 @@ household_2020 <- get_decennial(
 ```
 
 The idea behind `load_variables()` is for you to be able to search for the variable code for the variable you need.
-
 
 ## Census Geographies
 
@@ -142,8 +213,8 @@ tricounty_hispanic_tract <- get_decennial(
   year = 2020)
 ```
 
-
 ## Quering for multiple variables
+
 The `varaible` argument can take a vector of variables as an input, allowing to query for more than one variable at the time. We can create a vector and then call that vector as the input of the `variable` argument, or we can use the concatenate function `c()` and request data from multiple variables.
 
 ```{r}
@@ -175,7 +246,7 @@ In every table you can generally find a variable that is an appropriate denomina
 
 Once we access the data we want, we can apply our data wrangling skills to get the data in the format that we want.
 
-Let’s demonstrate this with an example. Let’s compare the distribution of percentage White population and percentage Hispanic population by census track vary among the  Tri-Counties.
+Let’s demonstrate this with an example. Let’s compare the distribution of percentage White population and percentage Hispanic population by census track vary among the Tri-Counties.
 
 The first step is to get the data.
 
@@ -183,12 +254,10 @@ The first step is to get the data.
 
 Make a query to get White and Hispanic population data for Tri-counties by tracks from the 2020 Decennial Census. Include the total population summary variable (summary_var = "P2_001N").
 
-
 Hint: variable codes are:
 
 -   Total Hispanic population = P2_002N
 -   Total White population = P2_005N
-
 
 ```{r}
 tricounty_track_hw <- get_decennial(
@@ -204,6 +273,7 @@ tricounty_track_hw <- get_decennial(
 We can check our data by calling the `View(tricounty_track_hw)` function in the console.
 
 ### Calculating the percentage of White and Hispanic population in each track
+
 And clean the NAMES column and separate track, county and state into it’s own column using `tidyr::separate()`.
 
 ```{r}
@@ -215,7 +285,7 @@ tricounty_track_clean <- tricounty_track_hw %>%
 
 ### Plotting the data
 
-Let's create a plot to compare the distribution of percentage White population and percentage Hispanic population by census track vary among the  Tri-Counties.
+Let's create a plot to compare the distribution of percentage White population and percentage Hispanic population by census track vary among the Tri-Counties.
 
 ```{r}
 ggplot(tricounty_track_clean, 
@@ -224,7 +294,6 @@ ggplot(tricounty_track_clean,
     facet_wrap(~variable)+
     theme_light()
 ```
-
 
 ## `get_acs()`
 
@@ -258,7 +327,6 @@ median_income_5yr <- get_acs(
 vars <- load_variables(2021, "acs5")
 ```
 
-
 ## Spatial Census Data in `tidycensus`
 
 To work with “spatial” Census data you would generally have to go and find shapefiles on the Census website, download a CSV with the data, clean and format the data, load the geometries and data to your spatial data software of choice, then align the key fields and join your data with the geometries.
@@ -266,7 +334,6 @@ To work with “spatial” Census data you would generally have to go and find s
 Again, `tidycensus` to the rescue! This packages combines all these steps and makes it very easy to get census data nd its geometries ready for analysis. Let’s see how this work.
 
 So now, if we want to retrieve data for income estimates by county for California with it’s associated geometries we need to know the variable for income estimates (“B19013_001”), call `get_acs()` with all the necessary information and add the argument `geometry = TRUE` to get the spatial data for each geography.
-
 
 ```{r}
 ## defaults to most recent 5year estimates (2017-2021 5-year ACS)
@@ -278,24 +345,22 @@ ca_income <- get_acs(
     geometry = TRUE) ## This argument does all of the steps mentioned above.
 ```
 
-
 Now we have the corresponding spatial data bind to our variable of interest. We can plot this data using the base r `plot()` function.
-
 
 ```{r}
 plot(ca_income["estimate"])
 ```
 
-## Interactive maps 
+## Interactive maps
 
 ```{r}
 mapview(ca_income, zcol = "estimate")
 ```
 
-
 ## Mapping ACS data with `ggplot2`
 
-1. Get _race_ data fro Santa Barbara County
+1.  Get *race* data fro Santa Barbara County
+
 ```{r}
 race_var <- c(
     Hispanic = "DP05_0071P",
@@ -315,14 +380,15 @@ sb_race <- get_acs(
 head(sb_race)
 ```
 
-2. Filter for Hispanic population
+2.  Filter for Hispanic population
+
 ```{r}
 sb_hispanic <- filter(sb_race,
                       variable == "Hispanic")
 ```
 
+3.  Plot!
 
-3. Plot!
 ```{r}
 ggplot(sb_hispanic,
        aes(fill = estimate))+
@@ -342,7 +408,6 @@ ggplot(sb_hispanic, aes(fill = estimate)) +
        caption = "2017-2021 ACS | tidycensus R package")
 ```
 
-
 You can also plot you data in bins instead of a continuous scale.
 
 ```{r}
@@ -355,7 +420,6 @@ ggplot(sb_hispanic, aes(fill = estimate)) +
        fill = "ACS estimate",
        caption = "2017-2021 ACS | tidycensus R package")
 ```
-
 
 Which style to use will depends on what you want to achieve. We can see that in the plot with bins we loose some resolution. On the other hand the continuous scale can provide a little of a color over load.
 
@@ -374,9 +438,10 @@ ggplot(sb_race, aes(fill = estimate)) +
 ```
 
 ## More on maps
+
 Check out the following resources to learn more about mapping census data and spatial analysis.
 
-- The `tmap` package ([Tennekes 2018](https://www.jstatsoft.org/article/view/v084i06)) is an alternative to `ggplot2` for creating custom maps. T stands for “Thematic”, refering to the phenomena that is shown or plotted, for example demographical, social, cultural, or economic phenomena. This package includes a wide range of functionality for custom cartography. Example of `tmap` and `tidycensus` in [Walker 2023, Chapter 6](https://walker-data.com/census-r/mapping-census-data-with-r.html#map-making-with-tmap).
-- [Reactive mapping with `Shiny`](https://walker-data.com/census-r/mapping-census-data-with-r.html#reactive-mapping-with-shiny)
+-   The `tmap` package ([Tennekes 2018](https://www.jstatsoft.org/article/view/v084i06)) is an alternative to `ggplot2` for creating custom maps. T stands for “Thematic”, refering to the phenomena that is shown or plotted, for example demographical, social, cultural, or economic phenomena. This package includes a wide range of functionality for custom cartography. Example of `tmap` and `tidycensus` in [Walker 2023, Chapter 6](https://walker-data.com/census-r/mapping-census-data-with-r.html#map-making-with-tmap).
+-   [Reactive mapping with `Shiny`](https://walker-data.com/census-r/mapping-census-data-with-r.html#reactive-mapping-with-shiny)
 -   Spatial Analysis with Census Data, [Walker 2023, Chapter 7](https://walker-data.com/census-r/spatial-analysis-with-us-census-data.html)
 -   Modeling Census Data, [Walker 2023 Chapter 8](https://walker-data.com/census-r/modeling-us-census-data.html#modeling-us-census-data). Indices for segregation and diversity are addresed in this chapter.
