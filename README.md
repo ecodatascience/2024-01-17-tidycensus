@@ -47,4 +47,4 @@ census_api_key("YOUR KEY GOES HERE", install = TRUE)
 
 ## Workshop Material
 - [Slides](https://docs.google.com/presentation/d/1uO1_g80zrt9D1JuaNdHHiOEj29kMIRcUvFxRpk4wefg/edit?usp=sharing)
-- [Script](https://github.com/ecodatascience/2024-01-17-tidycensus/blob/main/intro-to-tidycensus.qmd)
+- [Code](https://ecodatascience.github.io/2024-01-17-tidycensus/)
